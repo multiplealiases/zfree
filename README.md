@@ -36,4 +36,6 @@ A list of dependencies and why they're here:
 
 * Unaware of disk-based swap.
 
+* Unaware of zswap (not to be confused with zram, which is supported).
+
 * Stats diverge from `procps-ng` `free` for reasons I don't understand.
