@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -o nounset
+set -o errexit
+set -o pipefail
+
+# SPDX-License-Identifier: MIT
+
+# Copyright (c) 2024 multiplealiases
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# “Software”), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+# NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+# DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+# OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
+# THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+function banner() {
+    echo a zram-aware free-alike
+}
+
+function usage() {
+    echo Usage: zfree
+}
+
+function help_text(){
+    cat << EOF
+$(banner)
+$(usage)
+
+Options
+-h, --help          this help
+EOF
+}
+
+ARGS="$(getopt --options '' --long help -- "$@")"
+eval set -- "$ARGS"
+while true
+do
+    case "$1" in
+    --help)
+        help_text
+        exit 1
+        ;;
+    --)
+        break
+        ;;
+    esac
+done
+
+cleanup_array="$(mktemp)"
+function cleanup() {
+    < "$cleanup_array" xargs -0 -I{} rm -rf {}
+    rm -f "$cleanup_array"
+}
+# shellcheck disable=SC2120
+function append_mktemp() {
+    tmp="$(mktemp "$@")"
+    printf "%s\0" "$tmp" >> "$cleanup_array"
+    printf "%s\n" "$tmp"
+}
+trap 'cleanup' ERR EXIT
+
+meminfo=$(append_mktemp)
+mm_stat=$(append_mktemp)
+output=$(append_mktemp)
+
+# TODO: figure out multiple zram swap devices
+zswap_dev=$(grep zram /proc/swaps | tr -s ' ' | cut -f 1 -d ' ' | rev | cut -f 1 -d / | rev)
+
+cat /proc/meminfo > "$meminfo"
+cat /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
+
+# kiB
+memtotal=$(( $(grep MemTotal "$meminfo" | tr -cd '0-9') ))
+memavailable=$(( $(grep MemAvailable "$meminfo" | tr -cd '0-9' ) ))
+memcache=$(( $(grep ) ))
+membuf=$(( $() ))
+memfree=$(( $(grep MemFree "$meminfo" | tr -cd '0-9' ) ))
+memused=$(( memtotal - memfree ))
+
+# bytes
+ztotal=$(tr -s ' ' < "$mm_stat" | tr -s ' ' | cut -f 3 -d ' ')
+zdata=$(tr -s ' ' < "$mm_stat" | tr -s ' ' | cut -f 1 -d ' ')
+
+# dimensionless
+# add 1 to ztotal to prevent division by 0
+zratio=$( echo "$zdata" "$((ztotal + 1))" | awk '{printf "%.2f\n", $1/$2}' )
+
+# convert to MiB (1024, not 1000)
+memtotal=$(( memtotal / 1024 ))
+memavailable=$(( memavailable / 1024 ))
+memfree=$(( memfree / 1024 ))
+memused=$(( memused / 1024 ))
+ztotal=$(( ztotal / 1048576 ))
+zdata=$(( zdata / 1048576 ))
+
+# TODO: support for units other than MiB
+printf ' %s %s %s %s %s %s %s\n' "total" "used" "available" "free" "comptotal" "compdata" "compratio" > "$output"
+printf '%sM %sM %sM %sM %sM %sM %s\n' "$memtotal" "$memused" "$memavailable" "$memfree" "$ztotal" "$zdata" "$zratio" >> "$output"
+
+column -td "$output"
