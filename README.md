@@ -1,6 +1,6 @@
 # zfree
 
-A zram swap-aware `free`-alike.
+A zram swap-aware `free`-alike, or: mashing `free` and `zramctl` together.
 
 ## Usage
 
