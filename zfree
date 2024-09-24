@@ -85,8 +85,6 @@ cat /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
 # kiB
 memtotal=$(( $(grep MemTotal "$meminfo" | tr -cd '0-9') ))
 memavailable=$(( $(grep MemAvailable "$meminfo" | tr -cd '0-9' ) ))
-memcache=$(( $(grep ) ))
-membuf=$(( $() ))
 memfree=$(( $(grep MemFree "$meminfo" | tr -cd '0-9' ) ))
 memused=$(( memtotal - memfree ))
 
