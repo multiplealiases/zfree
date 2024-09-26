@@ -6,8 +6,8 @@ A zram swap-aware `free`-alike, or: mashing `free` and `zramctl` together.
 
 ```console
 $ ./zfree
-total   used    available  free   comptotal  compdata  compratio
-23416M  15365M  10195M     8050M  632M       2059M     3.26
+            total       used  available   bufcache       free   compdata  comptotal  compratio
+Mem:        7548M      5553M      2429M      1826M       168M      1595M       156M      10.17
 ```
 
 ## Dependencies
