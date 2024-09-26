@@ -104,8 +104,22 @@ memused=$(( memused / 1024 ))
 ztotal=$(( ztotal / 1048576 ))
 zdata=$(( zdata / 1048576 ))
 
+# and glue the units on
 # TODO: support for units other than MiB
-printf ' %s %s %s %s %s %s %s\n' "total" "used" "available" "free" "comptotal" "compdata" "compratio" > "$output"
-printf '%sM %sM %sM %sM %sM %sM %s\n' "$memtotal" "$memused" "$memavailable" "$memfree" "$ztotal" "$zdata" "$zratio" >> "$output"
 
-column -td "$output"
+unit='M'
+memtotal="$memtotal""$unit"
+memavailable="$memavailable""$unit"
+memfree="$memfree""$unit"
+memused="$memused""$unit"
+ztotal="$ztotal""$unit"
+zdata="$zdata""$unit"
+
+# this is primitive, but it's all I have.
+printf '      ' >> "$output"
+printf '%11s' "total" "used" "available" "free" "comptotal" "compdata" "compratio" >> "$output"
+echo >> "$output"
+printf 'Mem:  ' >> "$output"
+printf '%11s' "$memtotal" "$memused" "$memavailable" "$memfree" "$ztotal" "$zdata" "$zratio" >> "$output"
+echo >> "$output"
+cat "$output"
