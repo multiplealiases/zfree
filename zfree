@@ -44,8 +44,9 @@ Options
 
 Output columns
     total           Total installed memory [MemTotal]
-    used            Used memory (incl. buff/cache) [MemUsed]
+    used            Used memory [MemTotal - MemAvailable - Buffers - Cached]
     available       Available memory for allocation [MemAvailable]
+    bufcache        Buffers and cache [Buffers + Cached]
     free            Unused memory [MemFree]
     compdata        Uncompressed size of zram swap
     comptotal       Actual size of zram swap in physical memory
@@ -71,11 +72,11 @@ do
         shift 2
         ;;
     *)
-        die "argument(s) not recognized: %s\n" "$*"
+        die "argument(s) not recognized: %s\nUse --help for help\n" "$*"
        ;;
     esac
 done
-defcols="total used available free compdata comptotal compratio"
+defcols="total used available bufcache free compdata comptotal compratio"
 columns="${columns:-$defcols}"
 
 cleanup_array="$(mktemp)"
@@ -105,7 +106,10 @@ cat /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
 memtotal=$(( $(grep MemTotal "$meminfo" | tr -cd '0-9') ))
 memavailable=$(( $(grep MemAvailable "$meminfo" | tr -cd '0-9' ) ))
 memfree=$(( $(grep MemFree "$meminfo" | tr -cd '0-9' ) ))
-memused=$(( memtotal - memfree ))
+membuf=$(( $( grep Buffers "$meminfo" | tr -cd '0-9' ) ))
+memcache=$(( $( grep '^Cached' "$meminfo" | tr -cd '0-9' ) ))
+membufcache=$(( memcache + membuf ))
+memused=$(( memtotal - memfree - membufcache ))
 
 # bytes
 ztotal=$(tr -s ' ' < "$mm_stat" | tr -s ' ' | cut -f 3 -d ' ')
@@ -120,6 +124,7 @@ memtotal=$(( memtotal / 1024 ))
 memavailable=$(( memavailable / 1024 ))
 memfree=$(( memfree / 1024 ))
 memused=$(( memused / 1024 ))
+membufcache=$(( membufcache / 1024 ))
 ztotal=$(( ztotal / 1048576 ))
 zdata=$(( zdata / 1048576 ))
 
@@ -130,7 +135,8 @@ unit='M'
 memtotal="$memtotal""$unit"
 memavailable="$memavailable""$unit"
 memfree="$memfree""$unit"
-memused="$memused""$unit"
+ memused="$memused""$unit"
+membufcache="$membufcache""$unit"
 ztotal="$ztotal""$unit"
 zdata="$zdata""$unit"
 
@@ -146,6 +152,9 @@ do
         ;;
     available)
         values="$values$memavailable "
+        ;;
+    bufcache)
+        values="$values$membufcache "
         ;;
     free)
         values="$values$memfree "
