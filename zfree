@@ -40,7 +40,7 @@ $(usage)
 
 Options
 -h, --help          this help
--o, --output <list> columns to use for status output
+-o, --output <list> comma-separated list of columns to use for status output
 
 Output columns
     total           Total installed memory [MemTotal]
@@ -76,7 +76,7 @@ do
        ;;
     esac
 done
-defcols="total used available bufcache free compdata comptotal compratio"
+defcols="total,used,available,bufcache,free,compdata,comptotal,compratio"
 columns="${columns:-$defcols}"
 
 cleanup_array="$(mktemp)"
@@ -141,6 +141,9 @@ ztotal="$ztotal""$unit"
 zdata="$zdata""$unit"
 
 values=""
+# match the behavior of zramctl's --output option
+IFS=","
+
 for col in $columns;
 do
     case "$col" in
@@ -174,6 +177,7 @@ do
     esac
 done
 
+IFS=' ,'
 # this is primitive, but it's all I have.
 set -f
 printf '      ' >> "$output"
