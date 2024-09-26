@@ -16,14 +16,25 @@ A list of dependencies and why they're here:
 
 * Linux kernel: non-negotiable, this script peeks at Linux-specific files.
 
-* Bash: not sure. Should be able to remove what few Bashisms there are.
+* POSIX shell and standard associated utilities: this is a shell script.
 
-* GNU coreutils: argument parsing (`getopt`) and `-0`/`--null` flags.
-  Good chance these can be replaced with more portable constructs.
+The previous dependencies on Bash, GNU coreutils, and util-linux have
+been removed for portabiity.
 
-* util-linux: formatting the output into a `free`-like table (`column`).
-  Maybe this could be replaced with `printf`, but offets would need
-  to be manually updated each time the output gets changed.
+# Compatibility
+
+Apart from the Linux kernel, `zfree` attempts to only rely on
+portable constructs, and should work on the base installations
+of the following:
+
+* GNU/Linux distributions (Debian, Ubuntu, many others)
+
+* Linux distributions using BusyBox (Alpine Linux and friends)
+
+* Linux distributions using FreeBSD tools (Chimera Linux)
+
+Incompatibility with any of these platforms is a bug;
+please file a GitHub Issue.
 
 ## Limitations
 
