@@ -1,7 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -o nounset
 set -o errexit
-set -o pipefail
 
 # SPDX-License-Identifier: MIT
 
@@ -26,15 +25,15 @@ set -o pipefail
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 # THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-function banner() {
+banner() {
     echo a zram-aware free-alike
 }
 
-function usage() {
+usage() {
     echo Usage: zfree
 }
 
-function help_text(){
+help_text(){
     cat << EOF
 $(banner)
 $(usage)
@@ -60,17 +59,17 @@ do
 done
 
 cleanup_array="$(mktemp)"
-function cleanup() {
+cleanup() {
     < "$cleanup_array" xargs -0 -I{} rm -rf {}
     rm -f "$cleanup_array"
 }
 # shellcheck disable=SC2120
-function append_mktemp() {
+append_mktemp() {
     tmp="$(mktemp "$@")"
     printf "%s\0" "$tmp" >> "$cleanup_array"
     printf "%s\n" "$tmp"
 }
-trap 'cleanup' ERR EXIT
+trap 'cleanup' INT HUP TERM EXIT
 
 meminfo=$(append_mktemp)
 mm_stat=$(append_mktemp)
