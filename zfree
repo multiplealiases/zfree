@@ -40,6 +40,16 @@ $(usage)
 
 Options
 -h, --help          this help
+-o, --output <list> columns to use for status output
+
+Output columns
+    total           Total installed memory [MemTotal]
+    used            Used memory (incl. buff/cache) [MemUsed]
+    available       Available memory for allocation [MemAvailable]
+    free            Unused memory [MemFree]
+    compdata        Uncompressed size of zram swap
+    comptotal       Actual size of zram swap in physical memory
+    compratio       Compression ratio of zram swap [compdata / comptotal]
 EOF
 }
 
@@ -56,11 +66,17 @@ do
         help_text
         exit 1
         ;;
+    -o | --output)
+        columns="$2"
+        shift 2
+        ;;
     *)
         die "argument(s) not recognized: %s\n" "$*"
        ;;
     esac
 done
+defcols="total used available free compdata comptotal compratio"
+columns="${columns:-$defcols}"
 
 cleanup_array="$(mktemp)"
 cleanup() {
@@ -118,11 +134,44 @@ memused="$memused""$unit"
 ztotal="$ztotal""$unit"
 zdata="$zdata""$unit"
 
+values=""
+for col in $columns;
+do
+    case "$col" in
+    total)
+        values="$values$memtotal "
+        ;;
+    used)
+        values="$values$memused "
+        ;;
+    available)
+        values="$values$memavailable "
+        ;;
+    free)
+        values="$values$memfree "
+        ;;
+    compdata)
+        values="$values$zdata "
+        ;;
+    comptotal)
+        values="$values$ztotal "
+        ;;
+    compratio)
+        values="$values$zratio "
+        ;;
+    *)
+        die "unknown column type %s\n" "$col"
+        ;;
+    esac
+done
+
 # this is primitive, but it's all I have.
+set -f
 printf '      ' >> "$output"
-printf '%11s' "total" "used" "available" "free" "comptotal" "compdata" "compratio" >> "$output"
+printf '%11s' $columns >> "$output"
 echo >> "$output"
 printf 'Mem:  ' >> "$output"
-printf '%11s' "$memtotal" "$memused" "$memavailable" "$memfree" "$ztotal" "$zdata" "$zratio" >> "$output"
+printf '%11s' $values >> "$output"
 echo >> "$output"
+
 cat "$output"
