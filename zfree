@@ -100,7 +100,7 @@ output=$(append_mktemp)
 zswap_dev=$(grep zram /proc/swaps | tr -s ' ' | cut -f 1 -d ' ' | rev | cut -f 1 -d / | rev)
 
 cat /proc/meminfo > "$meminfo"
-cat /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
+awk '{$1=$1};1' /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
 
 # kiB
 memtotal=$(( $(grep MemTotal "$meminfo" | tr -cd '0-9') ))
@@ -112,8 +112,8 @@ membufcache=$(( memcache + membuf ))
 memused=$(( memtotal - memfree - membufcache ))
 
 # bytes
-ztotal=$(tr -s ' ' < "$mm_stat" | tr -s ' ' | cut -f 3 -d ' ')
-zdata=$(tr -s ' ' < "$mm_stat" | tr -s ' ' | cut -f 1 -d ' ')
+ztotal=$(cut -f 3 -d ' ' "$mm_stat")
+zdata=$(cut -f 1 -d ' ' "$mm_stat")
 
 # dimensionless
 # add 1 to ztotal to prevent division by 0
