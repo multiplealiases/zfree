@@ -30,7 +30,43 @@ banner() {
 }
 
 usage() {
-    echo Usage: zfree
+    printf 'Usage: zfree [options]\n'
+}
+
+kbytes_to_unit() {
+    kbytes="$1"
+    unit="$2"
+    case "$unit" in
+    '')
+        # /proc/meminfo values are in KiB
+        ret=$( printf 'scale=0; %s * 1024\n' "$kbytes" | bc )
+        ;;
+    K)
+        ret=$( printf "scale=0; (%s * 1024) / 1000\n" "$kbytes" | bc )
+        ;;
+    Ki)
+        # trivial case
+        ret="$kbytes"
+        ;;
+    M)
+        ret=$( printf "scale=0; (%s * 1024) / (1000 * 1000)\n" "$kbytes" | bc )
+        ;;
+    Mi)
+        ret=$( printf "scale=0; %s / 1024\n" "$kbytes" | bc )
+        ;;
+    G)
+        ret=$( printf "scale=1; (%s * 1024) / (1000 * 1000 * 1000)\n" "$kbytes" | bc )
+        ;;
+    Gi)
+        ret=$( printf "scale=1; %s / (1024 * 1024)\n" "$kbytes" | bc )
+        ;;
+    # TODO: TB/TiB support
+    # Does anyone have enough RAM that TB is the natural unit?
+    *)
+        die "Unsupported unit %s\n" "$unit"
+      ;;
+    esac
+    printf '%s\n' "$ret"
 }
 
 help_text(){
@@ -40,7 +76,15 @@ $(usage)
 
 Options
 -h, --help          this help
--o, --output <list> comma-separated list of columns to use for status output
+-o, --output <list> comma-separated list of columns to use for output
+-n, --no-unit       do not show unit in output
+Unit options
+-k, --kibi          show output in kibibytes
+-K, --kilo          show output in kilobytes
+-m, --mebi          show output in mebibytes [default]
+-M, --mega          show output in megabytes
+-g, --gibi          show output in gibibytes
+-G, --giga          show output in gigabytes
 
 Output columns
     total           Total installed memory [MemTotal]
@@ -67,17 +111,48 @@ do
         help_text
         exit 1
         ;;
+    -k | --kibi)
+        unit=Ki
+        shift
+        ;;
+    -K | --kilo)
+        unit=K
+        shift
+        ;;
+    -m | --mebi)
+        unit=Mi
+        shift
+        ;;
+    -M | --mega)
+        unit=M
+        shift
+        ;;
+    -g | --gibi)
+        unit=Gi
+        shift
+        ;;
+    -G | --giga)
+        unit=G
+        shift
+        ;;
+    -n | --no-unit)
+        nounit=y
+        shift
+        ;;
     -o | --output)
         columns="$2"
         shift 2
         ;;
     *)
         die "argument(s) not recognized: %s\nUse --help for help\n" "$*"
-       ;;
+        ;;
     esac
 done
 defcols="total,used,available,bufcache,free,compdata,comptotal,compratio"
 columns="${columns:-$defcols}"
+defunit=Mi
+unit="${unit-$defunit}"
+nounit="${nounit:-n}"
 
 cleanup_array="$(mktemp)"
 cleanup() {
@@ -120,18 +195,21 @@ zdata=$(cut -f 1 -d ' ' "$mm_stat")
 zratio=$( echo "$zdata" "$((ztotal + 1))" | awk '{printf "%.2f\n", $1/$2}' )
 
 # convert to MiB (1024, not 1000)
-memtotal=$(( memtotal / 1024 ))
-memavailable=$(( memavailable / 1024 ))
-memfree=$(( memfree / 1024 ))
-memused=$(( memused / 1024 ))
-membufcache=$(( membufcache / 1024 ))
-ztotal=$(( ztotal / 1048576 ))
-zdata=$(( zdata / 1048576 ))
+memtotal=$( kbytes_to_unit "$memtotal" "$unit" )
+memavailable=$( kbytes_to_unit "$memavailable" "$unit" )
+memfree=$( kbytes_to_unit "$memfree" "$unit" )
+memused=$( kbytes_to_unit "$memused" "$unit" )
+membufcache=$( kbytes_to_unit "$membufcache" "$unit" )
+ztotal=$( kbytes_to_unit "$((ztotal / 1024))" "$unit" )
+zdata=$( kbytes_to_unit "$((zdata / 1024))" "$unit" )
 
 # and glue the units on
-# TODO: support for units other than MiB
 
-unit='M'
+if [ "$nounit" = "y" ]
+then
+    unit=""
+fi
+
 memtotal="$memtotal""$unit"
 memavailable="$memavailable""$unit"
 memfree="$memfree""$unit"
