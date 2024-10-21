@@ -39,26 +39,26 @@ kbytes_to_unit() {
     case "$unit" in
     '')
         # /proc/meminfo values are in KiB
-        ret=$( printf 'scale=0; %s * 1024\n' "$kbytes" | bc )
+        ret=$(( kbytes * 1024 ))
         ;;
     K)
-        ret=$( printf "scale=0; (%s * 1024) / 1000\n" "$kbytes" | bc )
+        ret=$( echo "$kbytes" | awk '{printf "%.0f\n", ($1 * 1024) / (1000)}' )
         ;;
     Ki)
         # trivial case
         ret="$kbytes"
         ;;
     M)
-        ret=$( printf "scale=0; (%s * 1024) / (1000 * 1000)\n" "$kbytes" | bc )
+        ret=$( echo "$kbytes" | awk '{printf "%.0f\n", ($1 * 1024) / (1000 * 1000)}' )
         ;;
     Mi)
-        ret=$( printf "scale=0; %s / 1024\n" "$kbytes" | bc )
+        ret=$( echo "$kbytes" | awk '{printf "%.0f\n", $1 / 1024}' )
         ;;
     G)
-        ret=$( printf "scale=1; (%s * 1024) / (1000 * 1000 * 1000)\n" "$kbytes" | bc )
+        ret=$( echo "$kbytes" | awk '{printf "%.1f\n", ($1 * 1024) / (1000 * 1000 * 1000)}' )
         ;;
     Gi)
-        ret=$( printf "scale=1; %s / (1024 * 1024)\n" "$kbytes" | bc )
+        ret=$( echo "$kbytes" | awk '{printf "%.1f\n", $1 / (1024 * 1024)}' )
         ;;
     # TODO: TB/TiB support
     # Does anyone have enough RAM that TB is the natural unit?
