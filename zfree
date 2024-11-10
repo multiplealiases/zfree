@@ -167,12 +167,15 @@ trap 'cleanup' INT HUP TERM EXIT
 
 meminfo=$(append_mktemp)
 mm_stat=$(append_mktemp)
+swaps=$(append_mktemp)
 output=$(append_mktemp)
 
-# TODO: figure out multiple zram swap devices
-zswap_dev=$(grep zram /proc/swaps | tr -s ' ' | cut -f 1 -d ' ' | rev | cut -f 1 -d / | rev)
-
+cat /proc/swaps | awk '{$1=$1}1;' > "$swaps"
 cat /proc/meminfo > "$meminfo"
+
+# TODO: figure out multiple zram swap devices
+zswap_dev=$(grep zram "$swaps" | cut -f 1 -d ' ' | rev | cut -f 1 -d / | rev)
+
 if [ "$zswap_dev" != "" ]
 then
     awk '{$1=$1};1' /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
@@ -195,6 +198,15 @@ memcache=$(( $( grep '^Cached' "$meminfo" | tr -cd '0-9' ) ))
 membufcache=$(( memcache + membuf ))
 memused=$(( memtotal - memfree - membufcache ))
 
+swaptotal=$(grep -v '\(Filename\|zram\)' "$swaps" | cut -f 3 -d ' ')
+swapfree=$(grep -v '\(Filename\|zram\)' "$swaps" | cut -f 4 -d ' ')
+swapused=$((swaptotal - swapfree))
+if [ "$swaptotal" = "" ]
+then
+     haveswap=0
+else
+     haveswap=1
+fi
 # bytes
 ztotal=$(cut -f 3 -d ' ' "$mm_stat")
 zdata=$(cut -f 1 -d ' ' "$mm_stat")
@@ -211,6 +223,9 @@ memused=$( kbytes_to_unit "$memused" "$unit" )
 membufcache=$( kbytes_to_unit "$membufcache" "$unit" )
 ztotal=$( kbytes_to_unit "$((ztotal / 1024))" "$unit" )
 zdata=$( kbytes_to_unit "$((zdata / 1024))" "$unit" )
+swaptotal=$( kbytes_to_unit "$swaptotal" "$unit" )
+swapfree=$( kbytes_to_unit "$swapfree" "$unit" )
+swapused=$( kbytes_to_unit "$swapused" "$unit" )
 
 # and glue the units on
 
@@ -226,8 +241,12 @@ memused="$memused""$unit"
 membufcache="$membufcache""$unit"
 ztotal="$ztotal""$unit"
 zdata="$zdata""$unit"
+swaptotal="$swaptotal""$unit"
+swapfree="$swapfree""$unit"
+swapused="$swapused""$unit"
 
 values=""
+swapvalues=""
 # match the behavior of zramctl's --output option
 IFS=","
 
@@ -264,6 +283,27 @@ do
     esac
 done
 
+for col in $columns;
+do
+    case "$col" in
+    total)
+        swapvalues="$swapvalues$swaptotal "
+        ;;
+    used)
+        swapvalues="$swapvalues$swapused "
+        ;;
+    free)
+        swapvalues="$swapvalues$swapfree "
+        ;;
+    available | bufcache | compdata | comptotal | compratio)
+        swapvalues="${swapvalues}N "
+        ;;
+    *)
+        die "unknown column type %s\n" "$col"
+        ;;
+    esac
+done
+
 IFS=' ,'
 # this is primitive, but it's all I have.
 set -f
@@ -272,6 +312,12 @@ printf '%11s' $columns >> "$output"
 echo >> "$output"
 printf 'Mem:  ' >> "$output"
 printf '%11s' $values >> "$output"
+if [ "$haveswap" = 1 ]
+then
+    echo >> "$output"
+    printf 'Swap: ' >> "$output"
+    printf '%11s' $swapvalues | tr 'N' ' ' >> "$output"
+fi
 echo >> "$output"
 
 cat "$output"
