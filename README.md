@@ -10,6 +10,15 @@ $ ./zfree
 Mem:        7548M      5553M      2429M      1826M       168M      1595M       156M      10.17
 ```
 
+Also adapts to the presence of disk swap.
+
+```console
+$ ./zfree
+            total       used  available   bufcache       free   compdata  comptotal  compratio
+Mem:      23416Mi    21316Mi      956Mi     1224Mi      877Mi     1653Mi       10Mi     168.30
+Swap:      1024Mi        0Mi                           1024Mi
+```
+
 ## Dependencies
 
 A list of dependencies and why they're here:
@@ -46,7 +55,7 @@ please file a GitHub Issue.
 
 * ~~Dies if no zram swap devices exist.~~
 
-* Unaware of disk-based swap.
+* ~~Unaware of disk-based swap.~~
 
 * Unaware of zswap (not to be confused with zram, which is supported).
 
