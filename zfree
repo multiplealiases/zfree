@@ -148,8 +148,6 @@ do
         ;;
     esac
 done
-defcols="total,used,available,bufcache,free,compdata,comptotal,compratio"
-columns="${columns:-$defcols}"
 defunit=Mi
 unit="${unit-$defunit}"
 nounit="${nounit:-n}"
@@ -175,7 +173,18 @@ output=$(append_mktemp)
 zswap_dev=$(grep zram /proc/swaps | tr -s ' ' | cut -f 1 -d ' ' | rev | cut -f 1 -d / | rev)
 
 cat /proc/meminfo > "$meminfo"
-awk '{$1=$1};1' /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
+if [ "$zswap_dev" != "" ]
+then
+    awk '{$1=$1};1' /sys/class/block/"$zswap_dev"/mm_stat > "$mm_stat"
+    defcols="total,used,available,bufcache,free,compdata,comptotal,compratio"
+else
+    # write dummy values to mm_stat
+    # and omit the zram-specific columns
+    # if no zram swap is present
+    echo "0 0 0 0 0 0" > "$mm_stat"
+    defcols="total,used,available,bufcache,free"
+fi
+columns="${columns:-$defcols}"
 
 # kiB
 memtotal=$(( $(grep MemTotal "$meminfo" | tr -cd '0-9') ))

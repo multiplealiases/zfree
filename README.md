@@ -44,7 +44,7 @@ please file a GitHub Issue.
 * ~~Only displays stats in MiB.~~
   Now supports units, but `-h`/`--human-readable` isn't yet implemented.
 
-* Dies if no zram swap devices exist.
+* ~~Dies if no zram swap devices exist.~~
 
 * Unaware of disk-based swap.
 
