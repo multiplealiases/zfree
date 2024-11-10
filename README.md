@@ -41,7 +41,8 @@ please file a GitHub Issue.
 * Cannot handle multiple zram swap devices, only the first displayed
   by `/proc/swaps` (I believe this is a rare configuration?)
 
-* Only displays stats in MiB.
+* ~~Only displays stats in MiB.~~
+  Now supports units, but `-h`/`--human-readable` isn't yet implemented.
 
 * Dies if no zram swap devices exist.
 
