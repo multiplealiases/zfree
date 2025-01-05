@@ -152,23 +152,20 @@ defunit=Mi
 unit="${unit-$defunit}"
 nounit="${nounit:-n}"
 
-cleanup_array="$(mktemp)"
+cleanup_dir="$(mktemp -d)"
 cleanup() {
-    < "$cleanup_array" xargs -0 -I{} rm -rf {}
-    rm -f "$cleanup_array"
+    rm -rf "$cleanup_dir"
 }
 # shellcheck disable=SC2120
-append_mktemp() {
-    tmp="$(mktemp "$@")"
-    printf "%s\0" "$tmp" >> "$cleanup_array"
-    printf "%s\n" "$tmp"
+autocleaning_mktemp() {
+    mktemp "$@" -p "$cleanup_dir"
 }
 trap 'cleanup' INT HUP TERM EXIT
 
-meminfo=$(append_mktemp)
-mm_stat=$(append_mktemp)
-swaps=$(append_mktemp)
-output=$(append_mktemp)
+meminfo=$(autocleaning_mktemp)
+mm_stat=$(autocleaning_mktemp)
+swaps=$(autocleaning_mktemp)
+output=$(autocleaning_mktemp)
 
 cat /proc/swaps | awk '{$1=$1}1;' > "$swaps"
 cat /proc/meminfo > "$meminfo"
