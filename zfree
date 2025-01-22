@@ -73,7 +73,7 @@ def parse_disk_swap(swaps) -> (int, int, int):
                 swaprow = row
 
         if swaprow is None:
-            return None, None
+            return None, None, None
         cols = swaprow.split()
         total = int(cols[2])
         used = int(cols[3])
