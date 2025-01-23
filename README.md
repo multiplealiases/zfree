@@ -1,6 +1,7 @@
 # zfree
 
-A zram swap-aware `free`-alike, or: mashing `free` and `zramctl` together.
+A zram swap-aware `free`-alike, or: mashing `free` and `zramctl` together. Now in Python!
+
 
 ## Usage
 
