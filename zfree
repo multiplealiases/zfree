@@ -10,7 +10,7 @@ import math
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "0"
+__version__ = "1"
 
 
 def check_open_read(f: str) -> str:
@@ -414,15 +414,14 @@ def main():
 
     if show_zram_swap is True:
         output += "\n"
-        output += format_zram(zram_swap_total, zram_swap_data, zram_swap_ratio, args.width)
-
-    print(output)
+        output += format_zram(
+            zram_swap_total, zram_swap_data, zram_swap_ratio, args.width
+        )
 
     if show_psi:
-        print(
-            f"""psi some: {psi_some_avg10} {psi_some_avg60} {psi_some_avg300}
-psi full: {psi_full_avg10} {psi_full_avg60} {psi_full_avg300}"""
-        )
+        output += f"\npsi some/full: {psi_some_avg10:.2f}, {psi_some_avg60:.2f}, {psi_some_avg300:.2f} / {psi_full_avg10:.2f}, {psi_full_avg60:.2f}, {psi_full_avg300:.2f}"
+
+    print(output)
 
 
 if __name__ == "__main__":
