@@ -127,9 +127,12 @@ def trim_equals(x):
     return float(x.split("=")[1])
 
 
-def parse_psi(psi_memory):
-    some = map(trim_equals, psi_memory.split("\n")[0].split()[1:4])
-    full = map(trim_equals, psi_memory.split("\n")[1].split()[1:4])
+def parse_psi(psi):
+    """
+    Parse the output of /proc/pressure/* files.
+    """
+    some = map(trim_equals, psi.split("\n")[0].split()[1:4])
+    full = map(trim_equals, psi.split("\n")[1].split()[1:4])
     psi_some_avg10, psi_some_avg60, psi_some_avg300 = list(some)[0:3]
     psi_full_avg10, psi_full_avg60, psi_full_avg300 = list(full)[0:3]
     return (
