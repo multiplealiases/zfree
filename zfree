@@ -4,6 +4,7 @@
 
 import sys
 import re
+import math
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
@@ -173,6 +174,21 @@ def check_existence(meminfo, swaps, psi_memory) -> (bool, bool, bool):
     return (show_disk_swap, show_zram_swap, show_psi)
 
 
+# the following is adapted from code under MIT by Síle Ekaterin Liszka
+# this function is typically called "humanize()", but I refuse such notions.
+def autorange(value, in_unit, want_decimal) -> (float, str):
+    mappingbinary = ["B", "KiB", "MiB", "GiB"]
+    mappingdecimal = ["B", "KB", "MB", "GB"]
+    radix = 1000 if want_decimal else 1024
+    length = math.floor(math.log(value, radix))
+    length = min(length, 3)
+
+    if want_decimal:
+        return convert(value, in_unit, mappingdecimal[length])
+    else:
+        return convert(value, in_unit, mappingbinary[length])
+
+
 def convert(value, in_unit, out_unit):
     """
     Convert between in_unit and out_unit.
@@ -189,15 +205,18 @@ def convert(value, in_unit, out_unit):
 
     # this is fine enough for me.
     if value is None:
-        return None
+        return None, None
 
-    if in_unit == "auto":
+    if in_unit in ("autodecimal", "autobinary"):
         sys.exit('Internal error: cannot infer input unit (misplaced "auto"?)')
 
-    if out_unit == "auto":
-        sys.exit("-h flag not implemented")
-    else:
-        return value * (prefixes[in_unit] / prefixes[out_unit])
+    if out_unit == "autodecimal":
+        return autorange(value, in_unit, True)
+
+    if out_unit == "autobinary":
+        return autorange(value, in_unit, False)
+
+    return value * (prefixes[in_unit] / prefixes[out_unit]), out_unit
 
 
 def main():
@@ -233,7 +252,7 @@ def main():
         disk_swap_used = convert(disk_swap_used, "KiB", unit)
         disk_swap_free = convert(disk_swap_free, "KiB", unit)
     # if parse_disk_swap turns up empty, don't bother showing info
-    if disk_swap_total is None:
+    if disk_swap_total[0] is None:
         show_disk_swap = False
 
     if show_zram_swap is True:
