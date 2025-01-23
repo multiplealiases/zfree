@@ -2,6 +2,8 @@
 """A zram-aware free-alike"""
 # python3 because some very old distros do python-is-python2
 
+import operator
+import argparse
 import sys
 import re
 import math
@@ -225,7 +227,62 @@ def convert(value, in_unit, out_unit):
 
 
 def main():
-    unit = "MiB"
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument(
+        "-k", "--kibi", help="show output in kibibytes", action="store_true"
+    )
+    parser.add_argument(
+        "-K", "--kilo", help="show output in kilobytes", action="store_true"
+    )
+    parser.add_argument(
+        "-m", "--mebi", help="show output in mebibytes", action="store_true"
+    )
+    parser.add_argument(
+        "-M", "--mega", help="show output in megabytes", action="store_true"
+    )
+    parser.add_argument(
+        "-g", "--gibi", help="show output in gibibytes", action="store_true"
+    )
+    parser.add_argument(
+        "-G", "--giga", help="show output in gigabytes", action="store_true"
+    )
+    parser.add_argument(
+        "-h", help="do autoranging (\"human-readable\")", action="store_true"
+    )
+    parser.add_argument(
+        "--si", "--decimal", help="(-h only) use powers of 1000 not 1024", action="store_true"
+    )
+    parser.add_argument(
+        "--help", help="this help" ,action='help'
+    )
+    args = parser.parse_args()
+
+    units = {
+        "KiB": args.kibi,
+        "KB": args.kilo,
+        "MiB": args.mebi,
+        "MB": args.mega,
+        "GiB": args.gibi,
+        "GB": args.giga,
+        "auto": args.h
+    }
+    unitsenabled = operator.countOf(units.values(), True)
+    if unitsenabled > 1:
+        sys.exit("error: cannot specify more than 1 unit")
+    if unitsenabled == 0:
+        unit = "MiB"
+    else:
+        # select the unit for which args.* is True
+        unit = [k for k, v in units.items() if v][0]
+
+    if args.si and unit != "auto":
+        sys.exit("error: --si/--decimal only has effect in combination with -h.")
+    if unit == "auto":
+        if args.si:
+            unit = "autodecimal"
+        else:
+            unit = "autobinary"
+
     if sys.platform != "linux":
         sys.exit("zfree can only run on Linux.")
     meminfo, swaps, psi_memory = gather()
