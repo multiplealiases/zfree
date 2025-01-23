@@ -247,14 +247,15 @@ def main():
         "-G", "--giga", help="show output in gigabytes", action="store_true"
     )
     parser.add_argument(
-        "-h", help="do autoranging (\"human-readable\")", action="store_true"
+        "-h", help='do autoranging ("human-readable")', action="store_true"
     )
     parser.add_argument(
-        "--si", "--decimal", help="(-h only) use powers of 1000 not 1024", action="store_true"
+        "--si",
+        "--decimal",
+        help="(-h only) use powers of 1000 not 1024",
+        action="store_true",
     )
-    parser.add_argument(
-        "--help", help="this help" ,action='help'
-    )
+    parser.add_argument("--help", help="this help", action="help")
     args = parser.parse_args()
 
     units = {
@@ -264,7 +265,7 @@ def main():
         "MB": args.mega,
         "GiB": args.gibi,
         "GB": args.giga,
-        "auto": args.h
+        "auto": args.h,
     }
     unitsenabled = operator.countOf(units.values(), True)
     if unitsenabled > 1:
