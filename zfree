@@ -274,6 +274,23 @@ def format_meminfo(
     return ret
 
 
+def format_zram(total, data, ratio, width):
+    fmt = f"{{0:>{width}}}"
+    ret = ""
+    ret += "zram\n"
+
+    zhead = ["data", "total", "ratio"]
+    zinfo = [format_value_unit(data), format_value_unit(total), ratio]
+
+    for h in zhead:
+        ret += fmt.format(h)
+    ret += "\n"
+    for z in zinfo:
+        ret += fmt.format(z)
+
+    return ret
+
+
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
@@ -394,9 +411,12 @@ def main():
         show_disk_swap,
         args.width,
     )
-    print(output)
+
     if show_zram_swap is True:
-        print(f"zramswap: {zram_swap_total} {zram_swap_data} {zram_swap_ratio}")
+        output += "\n"
+        output += format_zram(zram_swap_total, zram_swap_data, zram_swap_ratio, args.width)
+
+    print(output)
 
     if show_psi:
         print(
