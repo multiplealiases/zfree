@@ -46,8 +46,7 @@ RHEL 7 and older are unsupported because those ship kernels older than 3.14.
 
 ## Limitations
 
-* Cannot handle multiple swap devices, only the first displayed
-  by `/proc/swaps` (I believe this is a rare configuration?)
+* Only handles a maximum of 1 zram swap device and 1 disk swap device.
 
 * Unaware of zswap (not to be confused with zram, which is supported).
 
