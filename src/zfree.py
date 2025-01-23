@@ -10,7 +10,7 @@ import math
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "2"
+__version__ = "3"
 
 
 def check_open_read(f: str) -> str:
