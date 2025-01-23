@@ -27,7 +27,7 @@ A list of dependencies and why they're here:
 
 ## Install
 
-* Copy ./src/zfree.py to somewhere in PATH under the name `zfree`.
+* Copy `./src/zfree.py` to somewhere in PATH under the name `zfree`.
 
 * Use pipx, `pipx install .` (haven't published to PyPI yet)
 
