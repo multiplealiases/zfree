@@ -2,7 +2,6 @@
 
 A zram swap-aware `free`-alike, or: mashing `free` and `zramctl` together. Now in Python!
 
-
 ## Usage
 
 ```console
@@ -26,7 +25,16 @@ A list of dependencies and why they're here:
 
 * Python 3.6+: f-strings.
 
-# Compatibility
+## Install
+
+* Copy ./src/zfree.py to somewhere in PATH under the name `zfree`.
+
+* Use pipx, `pipx install .` (haven't published to PyPI yet)
+
+* Distro packages don't yet exist,
+  but I plan on publishing to Gentoo's GURU at least.
+
+## Compatibility
 
 Currently untested, but the script
 is meant to work on the following platforms:
