@@ -10,7 +10,7 @@ import math
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "4"
+__version__ = "5"
 
 
 def check_open_read(f: str) -> str:
@@ -189,8 +189,9 @@ def autorange(value, in_unit, want_decimal) -> (float, str):
     """
     mappingbinary = ["B", "KiB", "MiB", "GiB"]
     mappingdecimal = ["B", "KB", "MB", "GB"]
-    radix = 1000 if want_decimal else 1024
-    length = math.ceil(math.log(value + 1, radix))
+    # the length calculation only works in bytes, so just convert to bytes.
+    shiftvalue = convert(value, in_unit, "B")[0]
+    length = math.floor(math.log(shiftvalue, 1000))
     length = min(length, 3)
 
     if want_decimal:
