@@ -232,6 +232,10 @@ def main():
         disk_swap_total = convert(disk_swap_total, "KiB", unit)
         disk_swap_used = convert(disk_swap_used, "KiB", unit)
         disk_swap_free = convert(disk_swap_free, "KiB", unit)
+    # if parse_disk_swap turns up empty, don't bother showing info
+    if disk_swap_total is None:
+        show_disk_swap = False
+
     if show_zram_swap is True:
         zram_swap_data, zram_swap_total, zram_swap_ratio = parse_zram_swap(mm_stat)
         zram_swap_data = convert(zram_swap_data, "B", unit)
@@ -245,11 +249,17 @@ def main():
     bufcache = convert(bufcache, "KiB", unit)
     used = convert(used, "KiB", unit)
 
-    print(f"""meminfo: {total} {available} {free} {bufcache} {used}
-zramswap: {zram_swap_total} {zram_swap_data} {zram_swap_ratio}
-diskswap: {disk_swap_total} {disk_swap_used} {disk_swap_free}
-psi some: {psi_some_avg10} {psi_some_avg60} {psi_some_avg300}
-psi full: {psi_full_avg10} {psi_full_avg60} {psi_full_avg300}""")
+    print(f"meminfo: {total} {available} {free} {bufcache} {used}")
+    if show_zram_swap is True:
+        print(f"zramswap: {zram_swap_total} {zram_swap_data} {zram_swap_ratio}")
+    if show_disk_swap is True:
+        print(f"diskswap: {disk_swap_total} {disk_swap_used} {disk_swap_free}")
+
+    if show_psi:
+        print(
+            f"""psi some: {psi_some_avg10} {psi_some_avg60} {psi_some_avg300}
+psi full: {psi_full_avg10} {psi_full_avg60} {psi_full_avg300}"""
+        )
 
 
 if __name__ == "__main__":
