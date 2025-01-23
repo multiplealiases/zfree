@@ -187,6 +187,10 @@ def convert(value, in_unit, out_unit):
         "GiB": 2**30,
     }
 
+    # this is fine enough for me.
+    if value is None:
+        return None
+
     if in_unit == "auto":
         sys.exit('Internal error: cannot infer input unit (misplaced "auto"?)')
 
