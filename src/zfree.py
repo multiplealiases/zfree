@@ -10,7 +10,7 @@ import math
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "3"
+__version__ = "4"
 
 
 def check_open_read(f: str) -> str:
@@ -280,7 +280,7 @@ def format_zram(total, data, ratio, width):
     ret += "zram\n"
 
     zhead = ["data", "total", "ratio"]
-    zinfo = [format_value_unit(data), format_value_unit(total), ratio]
+    zinfo = [format_value_unit(data), format_value_unit(total), f"{ratio:.2f}"]
 
     for h in zhead:
         ret += fmt.format(h)
