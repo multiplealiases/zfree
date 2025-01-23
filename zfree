@@ -190,7 +190,7 @@ def autorange(value, in_unit, want_decimal) -> (float, str):
     mappingbinary = ["B", "KiB", "MiB", "GiB"]
     mappingdecimal = ["B", "KB", "MB", "GB"]
     radix = 1000 if want_decimal else 1024
-    length = math.floor(math.log(value, radix))
+    length = math.ceil(math.log(value + 1, radix))
     length = min(length, 3)
 
     if want_decimal:
@@ -229,6 +229,51 @@ def convert(value, in_unit, out_unit):
     return value * (prefixes[in_unit] / prefixes[out_unit]), out_unit
 
 
+def format_value_unit(vu):
+    try:
+        return f"{vu[0]:.1f}{vu[1]}"
+    except (IndexError, TypeError):
+        return None
+
+
+def format_meminfo(
+    total,
+    available,
+    free,
+    bufcache,
+    used,
+    disk_swap_total,
+    disk_swap_used,
+    disk_swap_free,
+    show_disk_swap,
+    width,
+) -> str:
+    ret = ""
+
+    fmt = f"{{0:>{width}}}"
+
+    ret += f"Memory{'/swap' if show_disk_swap else ''}\n"
+
+    meminfohead = ["total", "used", "avail", "cache", "free"]
+    meminfo = [total, used, available, bufcache, free]
+    meminfo = list(map(format_value_unit, meminfo))
+
+    swapinfo = [disk_swap_total, disk_swap_used, disk_swap_free]
+    swapinfo = list(map(format_value_unit, swapinfo))
+    swapinfo = swapinfo[0:2] + ["", ""] + swapinfo[2:]
+
+    for h in meminfohead:
+        ret += fmt.format(h)
+    ret += "\n"
+    for m in meminfo:
+        ret += fmt.format(m)
+    if show_disk_swap:
+        ret += "\n"
+        for s in swapinfo:
+            ret += fmt.format(s)
+    return ret
+
+
 def main():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument(
@@ -257,6 +302,9 @@ def main():
         "--decimal",
         help="(-h only) use powers of 1000 not 1024",
         action="store_true",
+    )
+    parser.add_argument(
+        "-w", "--width", help="output width of each column", type=int, default=11
     )
     parser.add_argument("--help", help="this help", action="help")
     args = parser.parse_args()
@@ -334,7 +382,19 @@ def main():
     bufcache = convert(bufcache, "KiB", unit)
     used = convert(used, "KiB", unit)
 
-    print(f"meminfo: {total} {available} {free} {bufcache} {used}")
+    output = format_meminfo(
+        total,
+        available,
+        free,
+        bufcache,
+        used,
+        disk_swap_total,
+        disk_swap_used,
+        disk_swap_free,
+        show_disk_swap,
+        args.width,
+    )
+    print(output)
     if show_zram_swap is True:
         print(f"zramswap: {zram_swap_total} {zram_swap_data} {zram_swap_ratio}")
     if show_disk_swap is True:
