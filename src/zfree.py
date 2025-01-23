@@ -427,4 +427,4 @@ def main():
 if __name__ == "__main__":
     main()
 else:
-    sys.exit("zfree provides no public API and cannot be imported.")
+    main()
