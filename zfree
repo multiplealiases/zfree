@@ -45,6 +45,8 @@ def gather_zram_mmstat(swaps) -> str:
         cols = re.search(R".*zram.*", swaps, flags=re.MULTILINE).group(0).split()
         dev = cols[0].split("/")[2]
         path = f"/sys/class/block/{dev}/mm_stat"
+        # use open() instead of check_open_read()
+        # because the latter eats any potential OSError and returns None.
         return open(path, "r", encoding="utf-8").read().rstrip()
     # if the search for zram swap turns up blank
     except AttributeError:
