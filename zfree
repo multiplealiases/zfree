@@ -184,6 +184,9 @@ def check_existence(meminfo, swaps, psi_memory) -> (bool, bool, bool):
 # the following is adapted from code under MIT by Síle Ekaterin Liszka
 # this function is typically called "humanize()", but I refuse such notions.
 def autorange(value, in_unit, want_decimal) -> (float, str):
+    """
+    Perform autoranging on data quantities.
+    """
     mappingbinary = ["B", "KiB", "MiB", "GiB"]
     mappingdecimal = ["B", "KB", "MB", "GB"]
     radix = 1000 if want_decimal else 1024
