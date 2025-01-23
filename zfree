@@ -397,8 +397,6 @@ def main():
     print(output)
     if show_zram_swap is True:
         print(f"zramswap: {zram_swap_total} {zram_swap_data} {zram_swap_ratio}")
-    if show_disk_swap is True:
-        print(f"diskswap: {disk_swap_total} {disk_swap_used} {disk_swap_free}")
 
     if show_psi:
         print(
