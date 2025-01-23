@@ -379,7 +379,7 @@ def main():
 
     # Declare ahead of time for devices without accessible /proc/swaps
     # (e.g. Android phones under Termux)
-    disk_swap_total = None
+    disk_swap_total = (None, None)
     if show_disk_swap is True:
         disk_swap_total, disk_swap_used, disk_swap_free = parse_disk_swap(swaps)
         disk_swap_total = convert(disk_swap_total, "KiB", unit)
