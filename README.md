@@ -31,7 +31,7 @@ Currently untested, but the script
 is meant to work on the following platforms:
 
 * All Linux distributions (glibc, musl, future libcs)
-  shipping Python 3.6 or later and kernel 3.14 or later.
+  shipping Python 3.6+ and kernel 3.14+.
 
 RHEL 7 and older are unsupported because those ship kernels older than 3.14.
 
