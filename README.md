@@ -16,6 +16,9 @@ zram
 psi some/full: 60.31, 56.61, 46.29 / 53.32, 50.56, 41.34
 ```
 
+Automatically adapts to the presences (or absences)
+of disk swap, zram swap, and PSI info.
+
 ## Dependencies
 
 A list of dependencies and why they're here:
