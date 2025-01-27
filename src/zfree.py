@@ -410,6 +410,13 @@ def main():
         action="store_true",
     )
     parser.add_argument(
+        "-S", help="do not display disk swap stats", action="store_true"
+    )
+    parser.add_argument(
+        "-Z", help="do not display zram swap stats", action="store_true"
+    )
+    parser.add_argument("-P", help="do not display PSI", action="store_true")
+    parser.add_argument(
         "-w", "--width", help="output width of each column", type=int, default=11
     )
     parser.add_argument("--help", help="this help", action="help")
@@ -447,6 +454,14 @@ def main():
     show_disk_swap, show_zram_swap, show_psi = check_existence(
         meminfo, swaps, psi_memory
     )
+
+    # overrides
+    if args.S:
+        show_disk_swap = False
+    if args.Z:
+        show_zram_swap = False
+    if args.P:
+        show_psi = False
 
     if show_zram_swap is True:
         mm_stat = gather_zram_mmstat(swaps)
