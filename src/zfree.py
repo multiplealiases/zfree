@@ -2,6 +2,7 @@
 """A zram-aware free-alike"""
 # python3 because some very old distros do python-is-python2
 
+from collections import OrderedDict
 import operator
 import argparse
 import sys
@@ -61,7 +62,7 @@ def gather_zram_mmstat(swaps) -> str:
         )
 
 
-def parse_disk_swap(swaps) -> (int, int, int):
+def parse_disk_swap(swaps) -> OrderedDict:
     """
     Parse /proc/swaps for disk swap total and used.
     Units are in KiB.
@@ -78,12 +79,18 @@ def parse_disk_swap(swaps) -> (int, int, int):
                 swaprow = row
 
         if swaprow is None:
-            return None, None, None
+            return None
         cols = swaprow.split()
         total = int(cols[2])
         used = int(cols[3])
         free = total - used
-        return total, used, free
+        return OrderedDict(
+            [
+                ("total", (total, "KiB")),
+                ("used", (used, "KiB")),
+                ("free", (free, "KiB")),
+            ]
+        )
     except IndexError:
         sys.exit("Internal error: /proc/swaps not in expected format")
 
@@ -102,7 +109,10 @@ def parse_zram_swap(mmstat) -> (int, int, float):
     except ZeroDivisionError:
         # handle zero division gracefully
         ratio = None
-    return data, total, ratio
+    return OrderedDict(
+        # ratio is simply unitless.
+        [("data", (data, "B")), ("total", (total, "B")), ("ratio", (ratio, ""))]
+    )
 
 
 def parse_meminfo(meminfo) -> (int, int, int, int, int):
@@ -124,7 +134,18 @@ def parse_meminfo(meminfo) -> (int, int, int, int, int):
     free = memdict["MemFree"]
     bufcache = memdict["Buffers"] + memdict["Cached"]
     used = total - free - bufcache
-    return total, available, free, bufcache, used
+    # Python 3.6 does not guarantee ordering of dictionaries.
+    # This is only guaranteed starting with Python 3.7+.
+    # CPython 3.6's dictionaries are only ordered as an impl. detail.
+    return OrderedDict(
+        [
+            ("total", (total, "KiB")),
+            ("used", (used, "KiB")),
+            ("avail", (available, "KiB")),
+            ("cache", (bufcache, "KiB")),
+            ("free", (free, "KiB")),
+        ]
+    )
 
 
 def trim_equals(x):
@@ -183,26 +204,33 @@ def check_existence(meminfo, swaps, psi_memory) -> (bool, bool, bool):
 
 # the following is adapted from code under MIT by Síle Ekaterin Liszka
 # this function is typically called "humanize()", but I refuse such notions.
-def autorange(value, in_unit, want_decimal) -> (float, str):
+def autorange(n, want_decimal) -> (float, str):
     """
     Perform autoranging on data quantities.
     """
     mappingbinary = ["B", "KiB", "MiB", "GiB"]
     mappingdecimal = ["B", "KB", "MB", "GB"]
     # the length calculation only works in bytes, so just convert to bytes.
-    shiftvalue = convert(value, in_unit, "B")[0]
-    length = math.floor(math.log(shiftvalue, 1000))
+    shiftvalue = convert(n, "B")[0]
+    try:
+        length = math.floor(math.log(shiftvalue, 1000))
+    # the digit length of exactly 0 is 1,
+    # and I don't know what to tell you
+    # if you feed negative numbers into this.
+    except ValueError:
+        length = 0
     length = min(length, 3)
 
     if want_decimal:
-        return convert(value, in_unit, mappingdecimal[length])
+        return convert(n, mappingdecimal[length])
     else:
-        return convert(value, in_unit, mappingbinary[length])
+        return convert(n, mappingbinary[length])
 
 
-def convert(value, in_unit, out_unit):
+def convert(n, out_unit):
     """
     Convert between in_unit and out_unit.
+    Expected input is a tuple of (value, unit).
     """
     prefixes = {
         "B": 1,
@@ -214,6 +242,13 @@ def convert(value, in_unit, out_unit):
         "GiB": 2**30,
     }
 
+    value = n[0]
+    in_unit = n[1]
+
+    # passthrough for unitless values
+    if in_unit == "":
+        return (value, "")
+
     # this is fine enough for me.
     if value is None:
         return None, None
@@ -222,72 +257,125 @@ def convert(value, in_unit, out_unit):
         sys.exit('Internal error: cannot infer input unit (misplaced "auto"?)')
 
     if out_unit == "autodecimal":
-        return autorange(value, in_unit, True)
+        return autorange(n, True)
 
     if out_unit == "autobinary":
-        return autorange(value, in_unit, False)
+        return autorange(n, False)
 
     return value * (prefixes[in_unit] / prefixes[out_unit]), out_unit
 
 
-def format_value_unit(vu):
-    try:
-        return f"{vu[0]:.1f}{vu[1]}"
-    except (IndexError, TypeError):
-        return None
+def convert_all(d, out_unit):
+    """
+    Runs convert() on every key-value pair
+    of an OrderedDict whose entries are in the form
 
+        "name": (value, in_unit)
 
-def format_meminfo(
-    total,
-    available,
-    free,
-    bufcache,
-    used,
-    disk_swap_total,
-    disk_swap_used,
-    disk_swap_free,
-    show_disk_swap,
-    width,
-) -> str:
-    ret = ""
+    such that each entry becomes
 
-    fmt = f"{{0:>{width}}}"
+        "name": (value, out_unit)
 
-    ret += f"Memory{'/swap' if show_disk_swap else ''}\n"
-
-    meminfohead = ["total", "used", "avail", "cache", "free"]
-    meminfo = [total, used, available, bufcache, free]
-    meminfo = list(map(format_value_unit, meminfo))
-
-    swapinfo = [disk_swap_total, disk_swap_used, disk_swap_free]
-    swapinfo = list(map(format_value_unit, swapinfo))
-    swapinfo = swapinfo[0:2] + ["", ""] + swapinfo[2:]
-
-    for h in meminfohead:
-        ret += fmt.format(h)
-    ret += "\n"
-    for m in meminfo:
-        ret += fmt.format(m)
-    if show_disk_swap:
-        ret += "\n"
-        for s in swapinfo:
-            ret += fmt.format(s)
+    with the value appropriately converted, retaining insertion order.
+    """
+    ret = OrderedDict()
+    for k, v in d.items():
+        ret[k] = convert(v, out_unit)
     return ret
 
 
-def format_zram(total, data, ratio, width):
+def format_value_unit(vu):
+    """
+    Formats a (value, unit) tuple into a string suitable for display.
+    """
+    return f"{vu[0]:.1f}{vu[1]}"
+
+
+def format_value_unit_all(d):
+    """
+    Runs format_value_unit() on every value
+    of an OrderedDict whose entries are in the form
+
+        "name": (value, unit)
+
+    such that each entry becomes
+
+        "name": f"{value}{unit}"
+
+    retaining insertion order.
+    """
+    ret = OrderedDict()
+    for k, v in d.items():
+        ret[k] = format_value_unit(v)
+    return ret
+
+
+def format_table(t, width) -> str:
+    """
+    Formats a list of lists in the following format:
+
+    [
+        [header, value, value, value],
+        [header, value, value, value],
+        [header, value, value, value],
+        (...)
+    ]
+
+    into the string
+
+    header header header
+     value  value  value
+     value  value  value
+     value  value  value
+
+    with the appropriate left-padding.
+
+    Truncates to the shortest column;
+    please give perfectly rectangular tables as input.
+
+    Ensure that all fields are strings or trivially convertible to a string.
+    """
     fmt = f"{{0:>{width}}}"
+    ret = ""
+    for row in zip(*t):
+        ret += "\n"
+        for field in row:
+            ret += fmt.format(field)
+    # strip off the first newline for consistency.
+    return ret.lstrip("\n")
+
+
+def format_meminfo(meminfo, swapinfo, show_disk_swap, width) -> str:
+    ret = ""
+
+    meminfo = format_value_unit_all(meminfo)
+    if show_disk_swap:
+        swapinfo = format_value_unit_all(swapinfo)
+
+    ret += f"Memory{'/swap' if show_disk_swap else ''}\n"
+
+    table = []
+    if show_disk_swap:
+        for h in meminfo.keys():
+            table += [[h, meminfo.get(h, ""), swapinfo.get(h, "")]]
+    else:
+        for h in meminfo.keys():
+            table += [[h, meminfo.get(h, "")]]
+    ret += format_table(table, width)
+    return ret
+
+
+def format_zram(zram_swap, width):
     ret = ""
     ret += "zram\n"
 
-    zhead = ["data", "total", "ratio"]
-    zinfo = [format_value_unit(data), format_value_unit(total), f"{ratio:.2f}"]
+    zram_swap = format_value_unit_all(zram_swap)
 
-    for h in zhead:
-        ret += fmt.format(h)
-    ret += "\n"
-    for z in zinfo:
-        ret += fmt.format(z)
+    table = []
+    for h in zram_swap.keys():
+        table += [[h, zram_swap.get(h, "")]]
+
+    ret += format_table(table, width)
 
     return ret
 
@@ -380,49 +468,29 @@ def main():
 
     # Declare ahead of time for devices without accessible /proc/swaps
     # (e.g. Android phones under Termux)
-    disk_swap_total = (None, None)
-    disk_swap_used = (None, None)
-    disk_swap_free = (None, None)
+    disk_swap = None
     if show_disk_swap is True:
-        disk_swap_total, disk_swap_used, disk_swap_free = parse_disk_swap(swaps)
-        disk_swap_total = convert(disk_swap_total, "KiB", unit)
-        disk_swap_used = convert(disk_swap_used, "KiB", unit)
-        disk_swap_free = convert(disk_swap_free, "KiB", unit)
+        disk_swap = parse_disk_swap(swaps)
     # if parse_disk_swap turns up empty, don't bother showing info
-    if disk_swap_total[0] is None:
+    if disk_swap is None:
         show_disk_swap = False
 
+    zram_swap = None
     if show_zram_swap is True:
-        zram_swap_data, zram_swap_total, zram_swap_ratio = parse_zram_swap(mm_stat)
-        zram_swap_data = convert(zram_swap_data, "B", unit)
-        zram_swap_total = convert(zram_swap_total, "B", unit)
+        zram_swap = parse_zram_swap(mm_stat)
+    meminfo_stats = parse_meminfo(meminfo)
 
-    total, available, free, bufcache, used = parse_meminfo(meminfo)
+    meminfo_stats = convert_all(meminfo_stats, unit)
+    if disk_swap:
+        disk_swap = convert_all(disk_swap, unit)
+    if zram_swap:
+        zram_swap = convert_all(zram_swap, unit)
 
-    total = convert(total, "KiB", unit)
-    available = convert(available, "KiB", unit)
-    free = convert(free, "KiB", unit)
-    bufcache = convert(bufcache, "KiB", unit)
-    used = convert(used, "KiB", unit)
-
-    output = format_meminfo(
-        total,
-        available,
-        free,
-        bufcache,
-        used,
-        disk_swap_total,
-        disk_swap_used,
-        disk_swap_free,
-        show_disk_swap,
-        args.width,
-    )
+    output = format_meminfo(meminfo_stats, disk_swap, show_disk_swap, args.width)
 
     if show_zram_swap is True:
         output += "\n"
-        output += format_zram(
-            zram_swap_total, zram_swap_data, zram_swap_ratio, args.width
-        )
+        output += format_zram(zram_swap, args.width)
 
     if show_psi:
         output += f"\npsi some/full: {psi_some_avg10:.2f}, {psi_some_avg60:.2f}, {psi_some_avg300:.2f} / {psi_full_avg10:.2f}, {psi_full_avg60:.2f}, {psi_full_avg300:.2f}"
