@@ -8,13 +8,15 @@ import argparse
 import sys
 import re
 import math
+import typing
+from typing import List, Optional, Tuple
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
 __version__ = "5"
 
 
-def check_open_read(f: str) -> str:
+def check_open_read(f: str) -> typing.Optional[str]:
     """
     Open and read a file into a string.
     Returns None if it encounters an OSError because
@@ -27,7 +29,7 @@ def check_open_read(f: str) -> str:
         return None
 
 
-def gather() -> (str, str, str):
+def gather() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     Gather all required files and read them into strings.
     (API files have ephemeral and ever-changing contents,
@@ -39,21 +41,22 @@ def gather() -> (str, str, str):
     return meminfo, swaps, psi_memory
 
 
-def gather_zram_mmstat(swaps) -> str:
+def gather_zram_mmstat(swaps) -> Optional[str]:
     """
     Try to find a zram swap device and return its mm_stat.
     """
     try:
         # Having more than 1 zram swap device is uncommon and unsupported.
-        cols = re.search(R".*zram.*", swaps, flags=re.MULTILINE).group(0).split()
+        search = re.search(R".*zram.*", swaps, flags=re.MULTILINE)
+        # if the search for zram swap turns up blank
+        if not search:
+            return None
+        cols = search.group(0).split()
         dev = cols[0].split("/")[2]
         path = f"/sys/class/block/{dev}/mm_stat"
         # use open() instead of check_open_read()
         # because the latter eats any potential OSError and returns None.
         return open(path, "r", encoding="utf-8").read().rstrip()
-    # if the search for zram swap turns up blank
-    except AttributeError:
-        return None
     except IndexError:
         sys.exit("Internal error: /proc/swaps not in expected format")
     except OSError:
@@ -62,7 +65,7 @@ def gather_zram_mmstat(swaps) -> str:
         )
 
 
-def parse_disk_swap(swaps) -> OrderedDict:
+def parse_disk_swap(swaps) -> Optional[OrderedDict]:
     """
     Parse /proc/swaps for disk swap total and used.
     Units are in KiB.
@@ -95,7 +98,7 @@ def parse_disk_swap(swaps) -> OrderedDict:
         sys.exit("Internal error: /proc/swaps not in expected format")
 
 
-def parse_zram_swap(mmstat) -> (int, int, float):
+def parse_zram_swap(mmstat) -> OrderedDict:
     """
     Parse the equivalents to zramctl COMPDATA and COMPTOTAL
     and calculates the compression ratio out of the zram swap mm_stat.
@@ -115,7 +118,7 @@ def parse_zram_swap(mmstat) -> (int, int, float):
     )
 
 
-def parse_meminfo(meminfo) -> (int, int, int, int, int):
+def parse_meminfo(meminfo) -> OrderedDict:
     """
     Parse meminfo for memory information.
     Values in KiB.
@@ -148,11 +151,11 @@ def parse_meminfo(meminfo) -> (int, int, int, int, int):
     )
 
 
-def trim_equals(x):
+def trim_equals(x: str) -> float:
     return float(x.split("=")[1])
 
 
-def parse_psi(psi):
+def parse_psi(psi) -> OrderedDict:
     """
     Parse the output of /proc/pressure/* files.
     """
@@ -168,7 +171,7 @@ def parse_psi(psi):
     )
 
 
-def check_existence(meminfo, swaps, psi_memory) -> (bool, bool, bool):
+def check_existence(meminfo, swaps, psi_memory) -> Tuple[bool, bool, bool]:
     """
     Checks if the files from gather() exist
     and produces boolean flags indicating what to display.
@@ -202,7 +205,9 @@ def check_existence(meminfo, swaps, psi_memory) -> (bool, bool, bool):
 
 # the following is adapted from code under MIT by Síle Ekaterin Liszka
 # this function is typically called "humanize()", but I refuse such notions.
-def autorange(n, want_decimal) -> (float, str):
+def autorange(
+    n: Tuple[float, str], want_decimal: bool
+) -> Tuple[Optional[float], Optional[str]]:
     """
     Perform autoranging on data quantities.
     """
@@ -210,6 +215,8 @@ def autorange(n, want_decimal) -> (float, str):
     mappingdecimal = ["B", "KB", "MB", "GB"]
     # the length calculation only works in bytes, so just convert to bytes.
     shiftvalue = convert(n, "B")[0]
+    if not shiftvalue:
+        return (None, None)
     try:
         length = math.floor(math.log(shiftvalue, 1000))
     # the digit length of exactly 0 is 1,
@@ -225,7 +232,9 @@ def autorange(n, want_decimal) -> (float, str):
         return convert(n, mappingbinary[length])
 
 
-def convert(n, out_unit):
+def convert(
+    n: Tuple[float, str], out_unit: str
+) -> Tuple[Optional[float], Optional[str]]:
     """
     Convert between in_unit and out_unit.
     Expected input is a tuple of (value, unit).
@@ -263,7 +272,7 @@ def convert(n, out_unit):
     return value * (prefixes[in_unit] / prefixes[out_unit]), out_unit
 
 
-def convert_all(d, out_unit):
+def convert_all(d: OrderedDict, out_unit: str) -> OrderedDict:
     """
     Runs convert() on every key-value pair
     of an OrderedDict whose entries are in the form
@@ -282,7 +291,7 @@ def convert_all(d, out_unit):
     return ret
 
 
-def format_value_unit(vu, dp=1):
+def format_value_unit(vu: Tuple[float, str], dp=1) -> str:
     """
     Formats a (value, unit) tuple into
     a string suitable for display, to dp decimal points.
@@ -290,7 +299,7 @@ def format_value_unit(vu, dp=1):
     return f"{vu[0]:.{dp}f}{vu[1]}"
 
 
-def format_value_unit_all(d):
+def format_value_unit_all(d: OrderedDict) -> OrderedDict:
     """
     Runs format_value_unit() on every value
     of an OrderedDict whose entries are in the form
@@ -309,7 +318,7 @@ def format_value_unit_all(d):
     return ret
 
 
-def format_table(t, width) -> str:
+def format_table(t: List[List[str]], width) -> str:
     """
     Formats a list of lists in the following format:
 
@@ -343,17 +352,22 @@ def format_table(t, width) -> str:
     return ret.lstrip("\n")
 
 
-def format_meminfo(meminfo, swapinfo, show_disk_swap, width) -> str:
+def format_meminfo(
+    meminfo: OrderedDict,
+    swapinfo: Optional[OrderedDict],
+    show_disk_swap: bool,
+    width: int,
+) -> str:
     ret = ""
 
     meminfo = format_value_unit_all(meminfo)
-    if show_disk_swap:
+    if swapinfo and show_disk_swap:
         swapinfo = format_value_unit_all(swapinfo)
 
     ret += f"Memory{'/swap' if show_disk_swap else ''}\n"
 
     table = []
-    if show_disk_swap:
+    if swapinfo and show_disk_swap:
         for h in meminfo.keys():
             table += [[h, meminfo.get(h, ""), swapinfo.get(h, "")]]
     else:
@@ -363,15 +377,17 @@ def format_meminfo(meminfo, swapinfo, show_disk_swap, width) -> str:
     return ret
 
 
-def format_zram(zram_swap, width):
+def format_zram(zram_swap: OrderedDict, width: int) -> str:
     ret = ""
     ret += "zram\n"
 
-    zram_swap = OrderedDict([
-        ("data", format_value_unit(zram_swap["data"])),
-        ("total", format_value_unit(zram_swap["total"])),
-        ("ratio", format_value_unit(zram_swap["ratio"], dp=2))
-    ])
+    zram_swap = OrderedDict(
+        [
+            ("data", format_value_unit(zram_swap["data"])),
+            ("total", format_value_unit(zram_swap["total"])),
+            ("ratio", format_value_unit(zram_swap["ratio"], dp=2)),
+        ]
+    )
 
     table = []
     for h in zram_swap.keys():
@@ -496,9 +512,9 @@ def main():
     if zram_swap:
         zram_swap = convert_all(zram_swap, unit)
 
-    output = format_meminfo(meminfo_stats, disk_swap, show_disk_swap, args.width)
+    output: str = format_meminfo(meminfo_stats, disk_swap, show_disk_swap, args.width)
 
-    if show_zram_swap is True:
+    if show_zram_swap and zram_swap:
         output += "\n"
         output += format_zram(zram_swap, args.width)
 
