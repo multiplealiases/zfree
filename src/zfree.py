@@ -282,11 +282,13 @@ def convert_all(d, out_unit):
     return ret
 
 
-def format_value_unit(vu):
+def format_value_unit(vu, dp=1):
     """
-    Formats a (value, unit) tuple into a string suitable for display.
+    Formats a (value, unit) tuple into
+    a string suitable for display, to dp decimal points.
     """
-    return f"{vu[0]:.1f}{vu[1]}"
+    fmt = f"{{vu[0]:.{dp}f}}{{vu[1]}}"
+    return fmt.format(vu=vu)
 
 
 def format_value_unit_all(d):
@@ -367,7 +369,11 @@ def format_zram(zram_swap, width):
     ret = ""
     ret += "zram\n"
 
-    zram_swap = format_value_unit_all(zram_swap)
+    zram_swap = OrderedDict([
+        ("data", format_value_unit(zram_swap["data"])),
+        ("total", format_value_unit(zram_swap["total"])),
+        ("ratio", format_value_unit(zram_swap["ratio"], dp=2))
+    ])
 
     table = []
     for h in zram_swap.keys():
