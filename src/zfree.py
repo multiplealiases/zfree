@@ -160,13 +160,11 @@ def parse_psi(psi):
     full = map(trim_equals, psi.split("\n")[1].split()[1:4])
     psi_some_avg10, psi_some_avg60, psi_some_avg300 = list(some)[0:3]
     psi_full_avg10, psi_full_avg60, psi_full_avg300 = list(full)[0:3]
-    return (
-        psi_some_avg10,
-        psi_some_avg60,
-        psi_some_avg300,
-        psi_full_avg10,
-        psi_full_avg60,
-        psi_full_avg300,
+    return OrderedDict(
+        [
+            ("some", [psi_some_avg10, psi_some_avg60, psi_some_avg300]),
+            ("full", [psi_full_avg10, psi_full_avg60, psi_full_avg300]),
+        ]
     )
 
 
@@ -472,14 +470,7 @@ def main():
         show_zram_swap = False
 
     if show_psi is True:
-        (
-            psi_some_avg10,
-            psi_some_avg60,
-            psi_some_avg300,
-            psi_full_avg10,
-            psi_full_avg60,
-            psi_full_avg300,
-        ) = parse_psi(psi_memory)
+        psi = parse_psi(psi_memory)
 
     # Declare ahead of time for devices without accessible /proc/swaps
     # (e.g. Android phones under Termux)
@@ -508,8 +499,11 @@ def main():
         output += format_zram(zram_swap, args.width)
 
     if show_psi:
-        output += f"\npsi some/full: {psi_some_avg10:.2f}, {psi_some_avg60:.2f}, {psi_some_avg300:.2f} / {psi_full_avg10:.2f}, {psi_full_avg60:.2f}, {psi_full_avg300:.2f}"
-
+        output += "\npsi some/full: "
+        for row in psi.values():
+            output += ", ".join(f"{v:.2f}" for v in row)
+            output += " / "
+    output = output.rstrip(" / ")
     print(output)
 
 
