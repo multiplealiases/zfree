@@ -12,7 +12,12 @@ from typing import List, Optional, Tuple
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "5"
+# TODO: untangle the meanings of
+#    user-selected          | impossibility
+# args.S -> show_disk_swap  | disk_swap
+# args.Z -> show_zram_swap  | zram_swap
+# args.P -> show_psi        | psi_memory
+__version__ = "6"
 
 
 def check_open_read(f: str) -> Optional[str]:
