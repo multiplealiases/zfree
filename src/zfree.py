@@ -383,15 +383,22 @@ def format_meminfo(
     return ret
 
 
-def format_zram(zram_swap: OrderedDict, width: int) -> str:
+def format_zram(zram_swap: OrderedDict, meminfo: OrderedDict, width: int) -> str:
     ret = ""
     ret += "zram\n"
+
+    memtotal = convert(meminfo["total"], "B")[0]
+    ztotal = convert(zram_swap["total"], "B")[0]
+    if (memtotal is None) or (ztotal is None):
+        sys.exit("internal error: total RAM or zram is None?")
+    totalpercent = (ztotal / memtotal) * 100.0
 
     zram_swap = OrderedDict(
         [
             ("data", format_value_unit(zram_swap["data"])),
             ("total", format_value_unit(zram_swap["total"])),
             ("ratio", format_value_unit(zram_swap["ratio"], dp=2)),
+            ("comp%", format_value_unit((totalpercent, "%"), dp=2))
         ]
     )
 
@@ -528,7 +535,7 @@ def main():
 
     if show_zram_swap and zram_swap:
         output += "\n"
-        output += format_zram(zram_swap, args.width)
+        output += format_zram(zram_swap, meminfo_stats, args.width)
 
     if show_psi and psi:
         output += "\npsi some/full: "
