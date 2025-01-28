@@ -8,7 +8,6 @@ import argparse
 import sys
 import re
 import math
-import typing
 from typing import List, Optional, Tuple
 
 # one-number pride versioning:
@@ -41,7 +40,7 @@ def gather() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     return meminfo, swaps, psi_memory
 
 
-def gather_zram_mmstat(swaps) -> Optional[str]:
+def gather_zram_mmstat(swaps: str) -> Optional[str]:
     """
     Try to find a zram swap device and return its mm_stat.
     """
@@ -65,7 +64,7 @@ def gather_zram_mmstat(swaps) -> Optional[str]:
         )
 
 
-def parse_disk_swap(swaps) -> Optional[OrderedDict]:
+def parse_disk_swap(swaps: str) -> Optional[OrderedDict]:
     """
     Parse /proc/swaps for disk swap total and used.
     Units are in KiB.
@@ -98,7 +97,7 @@ def parse_disk_swap(swaps) -> Optional[OrderedDict]:
         sys.exit("Internal error: /proc/swaps not in expected format")
 
 
-def parse_zram_swap(mmstat) -> OrderedDict:
+def parse_zram_swap(mmstat: str) -> OrderedDict:
     """
     Parse the equivalents to zramctl COMPDATA and COMPTOTAL
     and calculates the compression ratio out of the zram swap mm_stat.
@@ -118,7 +117,7 @@ def parse_zram_swap(mmstat) -> OrderedDict:
     )
 
 
-def parse_meminfo(meminfo) -> OrderedDict:
+def parse_meminfo(meminfo: str) -> OrderedDict:
     """
     Parse meminfo for memory information.
     Values in KiB.
@@ -155,7 +154,7 @@ def trim_equals(x: str) -> float:
     return float(x.split("=")[1])
 
 
-def parse_psi(psi) -> OrderedDict:
+def parse_psi(psi: str) -> OrderedDict:
     """
     Parse the output of /proc/pressure/* files.
     """
@@ -171,7 +170,9 @@ def parse_psi(psi) -> OrderedDict:
     )
 
 
-def check_existence(meminfo, swaps, psi_memory) -> Tuple[bool, bool, bool]:
+def check_existence(
+    meminfo: Optional[str], swaps: Optional[str], psi_memory: Optional[str]
+) -> Tuple[bool, bool, bool]:
     """
     Checks if the files from gather() exist
     and produces boolean flags indicating what to display.
@@ -481,7 +482,7 @@ def main():
     if args.P:
         show_psi = False
 
-    if show_zram_swap is True:
+    if show_zram_swap and swaps:
         mm_stat = gather_zram_mmstat(swaps)
     else:
         mm_stat = None
@@ -489,22 +490,28 @@ def main():
     if mm_stat is None:
         show_zram_swap = False
 
-    if show_psi is True:
+    if show_psi and psi_memory:
         psi = parse_psi(psi_memory)
+    else:
+        psi = None
 
     # Declare ahead of time for devices without accessible /proc/swaps
     # (e.g. Android phones under Termux)
     disk_swap = None
-    if show_disk_swap is True:
+    if show_disk_swap and disk_swap:
         disk_swap = parse_disk_swap(swaps)
     # if parse_disk_swap turns up empty, don't bother showing info
     if disk_swap is None:
         show_disk_swap = False
 
     zram_swap = None
-    if show_zram_swap is True:
+    if show_zram_swap and mm_stat:
         zram_swap = parse_zram_swap(mm_stat)
-    meminfo_stats = parse_meminfo(meminfo)
+
+    if meminfo:
+        meminfo_stats = parse_meminfo(meminfo)
+    else:
+        sys.exit("internal error: how'd you get this far without a /proc/meminfo?")
 
     meminfo_stats = convert_all(meminfo_stats, unit)
     if disk_swap:
@@ -518,7 +525,7 @@ def main():
         output += "\n"
         output += format_zram(zram_swap, args.width)
 
-    if show_psi:
+    if show_psi and psi:
         output += "\npsi some/full: "
         for row in psi.values():
             output += ", ".join(f"{v:.2f}" for v in row)
