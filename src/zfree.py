@@ -287,8 +287,7 @@ def format_value_unit(vu, dp=1):
     Formats a (value, unit) tuple into
     a string suitable for display, to dp decimal points.
     """
-    fmt = f"{{vu[0]:.{dp}f}}{{vu[1]}}"
-    return fmt.format(vu=vu)
+    return f"{vu[0]:.{dp}f}{vu[1]}"
 
 
 def format_value_unit_all(d):
@@ -335,12 +334,11 @@ def format_table(t, width) -> str:
 
     Ensure that all fields are strings or trivially convertible to a string.
     """
-    fmt = f"{{0:>{width}}}"
     ret = ""
     for row in zip(*t):
         ret += "\n"
         for field in row:
-            ret += fmt.format(field)
+            ret += f"{field:>{width}}"
     # strip off the first newline for consistency.
     return ret.lstrip("\n")
 
