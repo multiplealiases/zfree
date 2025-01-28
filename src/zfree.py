@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple
 __version__ = "5"
 
 
-def check_open_read(f: str) -> typing.Optional[str]:
+def check_open_read(f: str) -> Optional[str]:
     """
     Open and read a file into a string.
     Returns None if it encounters an OSError because
