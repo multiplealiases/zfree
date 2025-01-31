@@ -12,12 +12,7 @@ from typing import List, Optional, Tuple
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-# TODO: untangle the meanings of
-#    user-selected          | impossibility
-# args.S -> show_disk_swap  | disk_swap
-# args.Z -> show_zram_swap  | zram_swap
-# args.P -> show_psi        | psi_memory
-__version__ = "6"
+__version__ = "7"
 
 
 def check_open_read(f: str) -> Optional[str]:
@@ -53,7 +48,7 @@ def gather_zram_mmstat(swaps: str) -> Optional[str]:
         # Having more than 1 zram swap device is uncommon and unsupported.
         search = re.search(R".*zram.*", swaps, flags=re.MULTILINE)
         # if the search for zram swap turns up blank
-        if not search:
+        if search is None:
             return None
         cols = search.group(0).split()
         dev = cols[0].split("/")[2]
@@ -175,40 +170,6 @@ def parse_psi(psi: str) -> OrderedDict:
     )
 
 
-def check_existence(
-    meminfo: Optional[str], swaps: Optional[str], psi_memory: Optional[str]
-) -> Tuple[bool, bool, bool]:
-    """
-    Checks if the files from gather() exist
-    and produces boolean flags indicating what to display.
-    """
-
-    # Right now these flags mean "can't" rather than "don't".
-    # User arguments may disable these later.
-    show_disk_swap = True
-    show_zram_swap = True
-    show_psi = True
-
-    # Testing for absences
-    # * no /proc/meminfo
-    # * no /proc/swaps
-    # * no /proc/pressure/memory
-    if meminfo is None:
-        sys.exit("No /proc/meminfo. Cannot proceed. Is /proc mounted?")
-
-    if swaps is None:
-        # /proc/swaps is absent?
-        # Continuing without swap stats,
-        # but that seems odd to me.
-        show_disk_swap = False
-        show_zram_swap = False
-
-    if psi_memory is None:
-        show_psi = False
-
-    return (show_disk_swap, show_zram_swap, show_psi)
-
-
 # the following is adapted from code under MIT by Síle Ekaterin Liszka
 # this function is typically called "humanize()", but I refuse such notions.
 def autorange(
@@ -221,7 +182,8 @@ def autorange(
     mappingdecimal = ["B", "KB", "MB", "GB"]
     # the length calculation only works in bytes, so just convert to bytes.
     shiftvalue = convert(n, "B")[0]
-    if not shiftvalue:
+    # 'not' is not the same as 'is None'.
+    if shiftvalue is None:
         return (None, None)
     try:
         length = math.floor(math.log(shiftvalue, 1000))
@@ -254,7 +216,6 @@ def convert(
         "GB": 1000_000_000,
         "GiB": 2**30,
     }
-
     value = n[0]
     in_unit = n[1]
 
@@ -482,43 +443,30 @@ def main():
     if sys.platform != "linux":
         sys.exit("zfree can only run on Linux.")
     meminfo, swaps, psi_memory = gather()
-    show_disk_swap, show_zram_swap, show_psi = check_existence(
-        meminfo, swaps, psi_memory
-    )
 
     # overrides
-    if args.S:
-        show_disk_swap = False
-    if args.Z:
-        show_zram_swap = False
-    if args.P:
-        show_psi = False
+    show_disk_swap = not args.S
+    show_zram_swap = not args.Z
+    show_psi = not args.P
 
     if show_zram_swap and swaps:
         mm_stat = gather_zram_mmstat(swaps)
     else:
         mm_stat = None
-    # /proc/swaps present, but no zram swap found
-    if mm_stat is None:
-        show_zram_swap = False
 
     if show_psi and psi_memory:
         psi = parse_psi(psi_memory)
     else:
         psi = None
 
-    # Declare ahead of time for devices without accessible /proc/swaps
-    # (e.g. Android phones under Termux)
-    disk_swap = None
-    if show_disk_swap and disk_swap:
+    if show_disk_swap and swaps:
         disk_swap = parse_disk_swap(swaps)
-    # if parse_disk_swap turns up empty, don't bother showing info
-    if disk_swap is None:
-        show_disk_swap = False
-
-    zram_swap = None
+    else:
+        disk_swap = None
     if show_zram_swap and mm_stat:
         zram_swap = parse_zram_swap(mm_stat)
+    else:
+        zram_swap = None
 
     if meminfo:
         meminfo_stats = parse_meminfo(meminfo)
@@ -526,9 +474,9 @@ def main():
         sys.exit("internal error: how'd you get this far without a /proc/meminfo?")
 
     meminfo_stats = convert_all(meminfo_stats, unit)
-    if disk_swap:
+    if disk_swap and show_disk_swap:
         disk_swap = convert_all(disk_swap, unit)
-    if zram_swap:
+    if zram_swap and show_zram_swap:
         zram_swap = convert_all(zram_swap, unit)
 
     output: str = format_meminfo(meminfo_stats, disk_swap, show_disk_swap, args.width)
