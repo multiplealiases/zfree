@@ -11,8 +11,8 @@ Memory/swap
      7.4GiB     7.2GiB   445.4MiB    65.6MiB   146.4MiB
      1.0GiB       0.0B                           1.0GiB
 zram
-       data      total      ratio
-    14.7GiB     3.2GiB       4.55
+       data      total      ratio      comp%
+    14.7GiB     3.2GiB       4.55     43.24%
 psi some/full: 60.31, 56.61, 46.29 / 53.32, 50.56, 41.34
 ```
 
