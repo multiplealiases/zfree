@@ -178,8 +178,8 @@ def autorange(
     """
     Perform autoranging on data quantities.
     """
-    mappingbinary = ["B", "KiB", "MiB", "GiB"]
-    mappingdecimal = ["B", "KB", "MB", "GB"]
+    mappingbinary = ["B", "KiB", "MiB", "GiB", "TiB"]
+    mappingdecimal = ["B", "KB", "MB", "GB", "TiB"]
     # the length calculation only works in bytes, so just convert to bytes.
     shiftvalue = convert(n, "B")[0]
     # 'not' is not the same as 'is None'.
@@ -192,7 +192,7 @@ def autorange(
     # if you feed negative numbers into this.
     except ValueError:
         length = 0
-    length = min(length, 3)
+    length = min(length, 4)
 
     if want_decimal:
         return convert(n, mappingdecimal[length])
@@ -215,6 +215,8 @@ def convert(
         "MiB": 2**20,
         "GB": 1000_000_000,
         "GiB": 2**30,
+        "TB": 1000_000_000_000,
+        "TiB": 2**40,
     }
     value = n[0]
     in_unit = n[1]
@@ -393,6 +395,12 @@ def main():
         "-G", "--giga", help="show output in gigabytes", action="store_true"
     )
     parser.add_argument(
+        "--tera", help="show output in terabytes", action="store_true"
+    )
+    parser.add_argument(
+        "--tebi", help="show output in tebibytes", action="store_true"
+    )
+    parser.add_argument(
         "-h", help='do autoranging ("human-readable")', action="store_true"
     )
     parser.add_argument(
@@ -421,6 +429,8 @@ def main():
         "MB": args.mega,
         "GiB": args.gibi,
         "GB": args.giga,
+        "TiB": args.tebi,
+        "TB": args.tera,
         "auto": args.h,
     }
     unitsenabled = operator.countOf(units.values(), True)
