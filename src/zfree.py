@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 
 # one-number pride versioning:
 # increment every time the author is proud of the release
-__version__ = "7"
+__version__ = "8"
 
 
 def check_open_read(f: str) -> Optional[str]:
