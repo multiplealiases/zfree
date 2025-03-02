@@ -135,7 +135,7 @@ def parse_meminfo(meminfo: str) -> OrderedDict:
         sys.exit("MemAvailable in /proc/meminfo absent. How old is this kernel?")
     free = memdict["MemFree"]
     bufcache = memdict["Buffers"] + memdict["Cached"]
-    used = total - free - bufcache
+    used = total - available
     # Python 3.6 does not guarantee ordering of dictionaries.
     # This is only guaranteed starting with Python 3.7+.
     # CPython 3.6's dictionaries are only ordered as an impl. detail.
