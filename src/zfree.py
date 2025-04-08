@@ -333,7 +333,7 @@ def format_meminfo(
     if swapinfo and show_disk_swap:
         swapinfo = format_value_unit_all(swapinfo)
 
-    ret += f"Memory{'/swap' if show_disk_swap else ''}\n"
+    ret += f"Memory{'/swap' if (swapinfo and show_disk_swap) else ''}\n"
 
     table = []
     if swapinfo and show_disk_swap:
